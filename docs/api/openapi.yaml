@@ -1,0 +1,274 @@
+openapi: 3.0.3
+info:
+  title: Movie Recommendation API
+  description: API рекомендательной системы фильмов. Спецификация описывает получение рекомендаций и просмотр информации о фильмах. Реальный сервер для учебной работы не требуется.
+  version: 1.0.0
+
+servers:
+  - url: https://example.com/api/v1
+    description: Условный адрес API для документации
+
+tags:
+  - name: Recommendations
+    description: Получение персональных рекомендаций
+  - name: Movies
+    description: Информация о фильмах
+
+paths:
+  /recommendations:
+    post:
+      tags:
+        - Recommendations
+      summary: Получить персональные рекомендации
+      description: Формирует подборку фильмов на основе предпочтений пользователя и выбранных жанров.
+      operationId: createRecommendations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecommendationRequest'
+            example:
+              userId: 101
+              preferredGenres:
+                - Фантастика
+                - Приключения
+              limit: 5
+      responses:
+        '200':
+          description: Подборка рекомендаций успешно сформирована
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationList'
+              example:
+                userId: 101
+                recommendations:
+                  - movieId: 12
+                    title: Интерстеллар
+                    genre: Фантастика
+                    year: 2014
+                    rating: 8.7
+                    score: 0.96
+        '400':
+          description: Некорректный запрос — отсутствуют обязательные данные или переданы недопустимые значения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: INVALID_REQUEST
+                message: Поле preferredGenres должно содержать хотя бы один жанр
+        '500':
+          description: Внутренняя ошибка сервиса или модель рекомендаций временно недоступна
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: RECOMMENDATION_ERROR
+                message: Не удалось сформировать рекомендации
+
+  /recommendations/{userId}:
+    get:
+      tags:
+        - Recommendations
+      summary: Получить рекомендации пользователя
+      description: Возвращает ранее сформированную подборку рекомендаций для указанного пользователя.
+      operationId: getUserRecommendations
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Уникальный идентификатор пользователя
+          schema:
+            type: integer
+            minimum: 1
+          example: 101
+      responses:
+        '200':
+          description: Подборка рекомендаций найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationList'
+        '400':
+          description: Некорректный идентификатор пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: INVALID_USER_ID
+                message: Идентификатор пользователя должен быть положительным числом
+        '404':
+          description: Для пользователя не найдены рекомендации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: RECOMMENDATIONS_NOT_FOUND
+                message: Рекомендации для пользователя не найдены
+
+  /movies/{movieId}:
+    get:
+      tags:
+        - Movies
+      summary: Получить информацию о фильме
+      description: Возвращает название, жанр, год выпуска и рейтинг выбранного фильма.
+      operationId: getMovie
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          description: Уникальный идентификатор фильма
+          schema:
+            type: integer
+            minimum: 1
+          example: 12
+      responses:
+        '200':
+          description: Информация о фильме найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+              example:
+                movieId: 12
+                title: Интерстеллар
+                genre: Фантастика
+                year: 2014
+                rating: 8.7
+                description: Группа исследователей отправляется за пределы Солнечной системы.
+        '400':
+          description: Некорректный идентификатор фильма
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: INVALID_MOVIE_ID
+                message: Идентификатор фильма должен быть положительным числом
+        '404':
+          description: Фильм не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: MOVIE_NOT_FOUND
+                message: Фильм с указанным идентификатором не найден
+
+components:
+  schemas:
+    RecommendationRequest:
+      type: object
+      required:
+        - userId
+        - preferredGenres
+      properties:
+        userId:
+          type: integer
+          minimum: 1
+          description: Идентификатор пользователя
+          example: 101
+        preferredGenres:
+          type: array
+          minItems: 1
+          description: Жанры, которые интересуют пользователя
+          items:
+            type: string
+          example:
+            - Фантастика
+            - Приключения
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 5
+          description: Максимальное количество фильмов в подборке
+          example: 5
+
+    Movie:
+      type: object
+      required:
+        - movieId
+        - title
+        - genre
+        - year
+        - rating
+      properties:
+        movieId:
+          type: integer
+          description: Уникальный идентификатор фильма
+          example: 12
+        title:
+          type: string
+          description: Название фильма
+          example: Интерстеллар
+        genre:
+          type: string
+          description: Основной жанр фильма
+          example: Фантастика
+        year:
+          type: integer
+          description: Год выпуска
+          example: 2014
+        rating:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 10
+          description: Рейтинг фильма по шкале от 0 до 10
+          example: 8.7
+        description:
+          type: string
+          description: Краткое описание фильма
+          example: Группа исследователей отправляется за пределы Солнечной системы.
+
+    RecommendedMovie:
+      allOf:
+        - $ref: '#/components/schemas/Movie'
+        - type: object
+          required:
+            - score
+          properties:
+            score:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 1
+              description: Оценка соответствия фильма предпочтениям пользователя
+              example: 0.96
+
+    RecommendationList:
+      type: object
+      required:
+        - userId
+        - recommendations
+      properties:
+        userId:
+          type: integer
+          description: Идентификатор пользователя
+          example: 101
+        recommendations:
+          type: array
+          description: Список рекомендованных фильмов
+          items:
+            $ref: '#/components/schemas/RecommendedMovie'
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Краткий код ошибки
+          example: INVALID_REQUEST
+        message:
+          type: string
+          description: Человекочитаемое описание ошибки
+          example: Переданы некорректные данные
